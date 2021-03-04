@@ -1,0 +1,183 @@
+#include <iostream>
+#include <sstream>
+#include <cmath>
+#include <iomanip>
+
+namespace numbers{
+    class complex{
+        double re_{};
+        double im_{};
+    public:
+        complex(double re = 0, double im = 0) : re_{re}, im_{im} {}
+
+        explicit complex(const std::string& str) noexcept {
+            char c1, c2, c3;
+            std::istringstream s(str);
+            s >> c1 >> re_ >> c2 >> im_ >> c3;
+        }
+
+        double re() const noexcept {return re_;}
+        double im() const noexcept {return im_;}
+
+        double abs2() const {
+            return re_ * re_ + im_ * im_;
+        }
+        double abs() const {
+            return std::sqrt(abs2());
+        }
+
+        std::string to_string() const{
+            std::ostringstream s;
+            s.precision(10);
+            s << '(' << re_ << ',' << im_ << ')';
+            return s.str();
+        }
+
+        complex operator ~() const{
+            return {re_, -im_};
+        }
+
+        complex operator -() const{
+            return {-re_, -im_};
+        }
+
+        complex operator +=(const complex& z){
+            re_ += z.re();
+            im_ += z.im();
+            return *this;
+        }
+
+        complex operator -=(const complex& z){
+            return *this += -z;
+        }
+
+        complex operator *=(const complex& z){
+            double t_re = re_ * z.re() - im_ * z.im();
+            double t_im = re_ * z.im() + im_ * z.re();
+            re_ = t_re;
+            im_ = t_im;
+            return *this;
+        }
+
+        complex operator /=(const complex& z){
+            double c = z.abs2();
+            double t_re = (re_ * z.re() + im_ * z.im()) / c;
+            double t_im = (im_ * z.re() - re_ * z.im()) / c;
+            re_ = t_re;
+            im_ = t_im;
+            return {re_, im_};
+        }
+    };
+    
+    //------------------------------------------------------- complex_stack
+    
+    complex operator +(const complex& a, const complex& b){
+        complex t = a;
+        return t += b;
+    }
+
+    complex operator -(const complex& a, const complex& b){
+        complex t = a;
+        return t -= b;
+    }
+
+    complex operator *(const complex& a, const complex& b){
+        complex t = a;
+        return t *= b;
+    }
+    
+    complex operator /(const complex& a, const complex& b){
+        complex t = a;
+        return t /= b;
+    }
+    
+    void copy_stack(complex *head1, complex const *head2, size_t len) {
+        for (size_t i = 1; i < len; ++i) {
+            *head1 = *head2;
+            ++head1;
+            ++head2;
+        }
+    }
+
+    class complex_stack{
+        size_t size_{0};
+        complex *stack_{nullptr};
+    public:
+        explicit complex_stack(size_t size = 0, const complex *stack = nullptr, const complex& z = 0)
+            : size_{size} {
+            if (size_) {
+                stack_ = new complex[size_];
+                complex *tmp_ = stack_;
+                *tmp_ = z;
+                ++tmp_;
+                copy_stack(tmp_, stack, size);
+            }
+        }
+        
+        complex_stack(const complex_stack& s) : size_{s.size_} {
+            if (s.stack_) {
+                stack_ = new complex[size_];
+                copy_stack(stack_, s.stack_, size_);
+            }
+        }
+
+        const complex_stack& operator =(const complex_stack& s) {
+            if (&s != this) {
+                size_ = s.size_;
+                if (stack_) {
+                    delete [] stack_;
+                }
+                if (s.stack_) {
+                    stack_ = new complex[size_];
+                    copy_stack(stack_, s.stack_, size_);
+                } else {
+                    stack_ = nullptr;
+                }
+            }
+            return *this;
+        }
+
+        complex_stack(complex_stack&& s) : size_{s.size_}, stack_{s.stack_} {
+            s.size_ = 0;
+            s.stack_ = nullptr;
+        }
+
+        complex_stack& operator =(complex_stack&& s) {
+            if (&s != this) {
+                size_ = s.size_;
+                if (stack_) {
+                    delete [] stack_;
+                }
+                stack_ = s.stack_;
+                s.size_ = 0;
+                s.stack_ = nullptr;
+            }
+            return *this;
+        }
+
+        ~complex_stack(){
+            if (stack_) {
+                delete [] stack_;
+            }
+        }
+
+        [[nodiscard]] size_t size() const {return size_;}
+
+        const complex& operator[](size_t n) const noexcept{
+            return stack_[n];
+        }
+
+        complex_stack operator <<(complex z) const{
+            return complex_stack{size_ + 1, stack_, z};
+        }
+
+        complex operator +() const {return *stack_;}
+
+        complex_stack operator ~() const {
+            if (size_) {
+                return complex_stack{size_ - 1, stack_ + 2, stack_[1]};
+            }
+            return *this;
+        }
+    };
+}
